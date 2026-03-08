@@ -13,13 +13,13 @@ with app.app_context():
         exit(0)
 
     garage = Garage(
-        nom="Garage Demo Romand",
+        nom="Mekano Demo",
         adresse="Rue de la Gare 12",
         npa="1003",
         localite="Lausanne",
         canton="VD",
         telephone="021 312 00 00",
-        email="contact@garage-demo.ch",
+        email="contact@mekano.ch",
         numero_tva="CHE-123.456.789",
     )
     db.session.add(garage)
@@ -27,12 +27,12 @@ with app.app_context():
 
     admin = User(
         garage_id=garage.id,
-        email="admin@garageneo.ch",
-        prenom="Admin",
-        nom="NEO",
+        email="contact@mekano.ch",
+        prenom="Olivier",
+        nom="Neukomm",
         role="admin",
     )
-    admin.set_password("admin123")
+    admin.set_password("Cristal4you11++")
     db.session.add(admin)
 
     client = Client(
@@ -62,4 +62,5 @@ with app.app_context():
     db.session.add(vehicule)
 
     db.session.commit()
-    print("Seed OK: garage, admin (admin@garageneo.ch / admin123), 1 client, 1 vehicule")
+    print("Seed OK: garage Mekano Demo, admin (contact@mekano.ch), 1 client, 1 vehicule")
+
