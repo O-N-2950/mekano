@@ -12,6 +12,10 @@ TRANSITIONS = {
 
 class OrdreDeTravail(db.Model):
     __tablename__ = "ordres_travail"
+    __table_args__ = (
+        db.Index("ix_ordres_garage_statut", "garage_id", "statut"),
+        db.Index("ix_ordres_numero", "numero"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     garage_id = db.Column(db.Integer, db.ForeignKey("garages.id"), nullable=False)

@@ -4,6 +4,10 @@ from datetime import datetime, timezone
 
 class Vehicule(db.Model):
     __tablename__ = "vehicules"
+    __table_args__ = (
+        db.Index("ix_vehicules_garage_plaque", "garage_id", "plaque"),
+        db.Index("ix_vehicules_garage_actif", "garage_id", "actif"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     garage_id = db.Column(db.Integer, db.ForeignKey("garages.id"), nullable=False)

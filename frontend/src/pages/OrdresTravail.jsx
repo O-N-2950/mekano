@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Wrench, Search } from "lucide-react";
-import { api } from "../api";
+import { api, validators } from "../api";
 import Modal from "../components/ui/Modal";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Badge from "../components/ui/Badge";
 import Pagination from "../components/ui/Pagination";
 import Input, { TextArea, Select } from "../components/ui/Input";
+import { SkeletonTable } from "../components/ui/Skeleton";
 
 const EMPTY = {
   client_id: "", vehicule_id: "", description_travaux: "",
@@ -32,6 +34,8 @@ export default function OrdresTravail() {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [statutConfirm, setStatutConfirm] = useState(null); // {ordre, newStatut}
+  const [changingStatut, setChangingStatut] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -104,11 +108,19 @@ export default function OrdresTravail() {
     setSaving(false);
   };
 
-  const changeStatut = async (ordre, newStatut) => {
+  const changeStatut = (ordre, newStatut) => {
+    setStatutConfirm({ ordre, newStatut });
+  };
+
+  const confirmChangeStatut = async () => {
+    if (!statutConfirm) return;
+    setChangingStatut(true);
     try {
-      await api.patch(`/api/ordres/${ordre.id}/statut`, { statut: newStatut });
+      await api.patch(`/api/ordres/${statutConfirm.ordre.id}/statut`, { statut: statutConfirm.newStatut });
+      setStatutConfirm(null);
       load();
     } catch { /* */ }
+    setChangingStatut(false);
   };
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -144,7 +156,20 @@ export default function OrdresTravail() {
         </div>
 
         {loading ? (
-          <div className="p-12 text-center text-gray-400 text-sm">Chargement...</div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-gray-500 text-xs uppercase tracking-wider">
+                <th className="px-4 py-3">N°</th>
+                <th className="px-4 py-3">Statut</th>
+                <th className="px-4 py-3">Véhicule</th>
+                <th className="px-4 py-3">Client</th>
+                <th className="px-4 py-3">Description</th>
+                <th className="px-4 py-3">Entrée</th>
+                <th className="px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <SkeletonTable rows={5} cols={7} />
+          </table>
         ) : data.items.length === 0 ? (
           <div className="p-12 text-center">
             <Wrench size={40} className="text-gray-300 mx-auto mb-3" />
@@ -233,6 +258,16 @@ export default function OrdresTravail() {
           </button>
         </div>
       </Modal>
+      <ConfirmDialog
+        open={!!statutConfirm}
+        onClose={() => setStatutConfirm(null)}
+        onConfirm={confirmChangeStatut}
+        loading={changingStatut}
+        title="Confirmer le changement de statut"
+        message={statutConfirm
+          ? `Passer l'ordre ${statutConfirm.ordre.numero} en "${statutConfirm.newStatut}" ?`
+          : ""}
+      />
     </div>
   );
 }

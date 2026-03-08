@@ -1,15 +1,29 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Users, Search, Pencil, Trash2 } from "lucide-react";
-import { api } from "../api";
+import { api, debounce, validators } from "../api";
 import Modal from "../components/ui/Modal";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Pagination from "../components/ui/Pagination";
 import Input, { TextArea } from "../components/ui/Input";
+import { SkeletonTable } from "../components/ui/Skeleton";
 
 const EMPTY = {
   prenom: "", nom: "", entreprise: "", adresse: "", npa: "",
   localite: "", telephone: "", email: "", date_naissance: "", notes: "",
 };
+
+function validateForm(form) {
+  const errors = {};
+  if (!form.prenom.trim()) errors.prenom = "Prénom requis";
+  if (!form.nom.trim()) errors.nom = "Nom requis";
+  if (form.email && !validators.email(form.email))
+    errors.email = "Format email invalide";
+  if (form.notes && !validators.maxLength(form.notes, 5000))
+    errors.notes = "Maximum 5000 caractères";
+  if (form.npa && form.npa.length > 10)
+    errors.npa = "Maximum 10 caractères";
+  return errors;
+}
 
 export default function Clients() {
   const [data, setData] = useState({ items: [], total: 0, page: 1, pages: 1 });
@@ -26,18 +40,29 @@ export default function Clients() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (q = search, p = page) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page, per_page: 25 });
-      if (search) params.set("search", search);
+      const params = new URLSearchParams({ page: p, per_page: 25 });
+      if (q) params.set("search", q);
       const res = await api.get(`/api/clients?${params}`);
       setData(res);
     } catch { /* handled by api.js */ }
     setLoading(false);
-  }, [page, search]);
+  }, [search, page]);
 
-  useEffect(() => { load(); }, [load]);
+  // Debounced search — 300ms
+  const debouncedLoad = useRef(debounce((q) => {
+    setPage(1);
+    load(q, 1);
+  }, 300)).current;
+
+  useEffect(() => { load(); }, [page]);
+
+  const handleSearch = (e) => {
+    setSearch(e.target.value);
+    debouncedLoad(e.target.value);
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -65,6 +90,12 @@ export default function Clients() {
   };
 
   const handleSave = async () => {
+    // Frontend validation before sending
+    const frontErrors = validateForm(form);
+    if (Object.keys(frontErrors).length > 0) {
+      setErrors(frontErrors);
+      return;
+    }
     setSaving(true);
     setErrors({});
     try {
@@ -110,18 +141,29 @@ export default function Clients() {
               type="text"
               placeholder="Rechercher un client..."
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={handleSearch}
               className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
             />
           </div>
         </div>
 
         {loading ? (
-          <div className="p-12 text-center text-gray-400 text-sm">Chargement...</div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-gray-500 text-xs uppercase tracking-wider">
+                <th className="px-4 py-3">Nom</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Téléphone</th>
+                <th className="px-4 py-3">Localité</th>
+                <th className="px-4 py-3 w-20"></th>
+              </tr>
+            </thead>
+            <SkeletonTable rows={5} cols={5} />
+          </table>
         ) : data.items.length === 0 ? (
           <div className="p-12 text-center">
             <Users size={40} className="text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">Aucun client trouve</p>
+            <p className="text-gray-500 text-sm">Aucun client trouvé</p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -129,8 +171,8 @@ export default function Clients() {
               <tr className="border-b border-gray-200 text-left text-gray-500 text-xs uppercase tracking-wider">
                 <th className="px-4 py-3">Nom</th>
                 <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Telephone</th>
-                <th className="px-4 py-3">Localite</th>
+                <th className="px-4 py-3">Téléphone</th>
+                <th className="px-4 py-3">Localité</th>
                 <th className="px-4 py-3 w-20"></th>
               </tr>
             </thead>
@@ -163,42 +205,41 @@ export default function Clients() {
         <Pagination page={data.page} pages={data.pages} total={data.total} onChange={setPage} />
       </div>
 
-      {/* Create/Edit Modal */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? "Modifier le client" : "Nouveau client"} wide>
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Prenom *" value={form.prenom} onChange={set("prenom")} error={errors.prenom} />
+          <Input label="Prénom *" value={form.prenom} onChange={set("prenom")} error={errors.prenom} />
           <Input label="Nom *" value={form.nom} onChange={set("nom")} error={errors.nom} />
           <Input label="Entreprise" value={form.entreprise} onChange={set("entreprise")} />
           <Input label="Email" type="email" value={form.email} onChange={set("email")} error={errors.email} />
-          <Input label="Telephone" value={form.telephone} onChange={set("telephone")} />
+          <Input label="Téléphone" value={form.telephone} onChange={set("telephone")} />
           <Input label="Date de naissance" type="date" value={form.date_naissance} onChange={set("date_naissance")} />
           <Input label="Adresse" value={form.adresse} onChange={set("adresse")} />
           <div className="grid grid-cols-2 gap-2">
-            <Input label="NPA" value={form.npa} onChange={set("npa")} />
-            <Input label="Localite" value={form.localite} onChange={set("localite")} />
+            <Input label="NPA" value={form.npa} onChange={set("npa")} error={errors.npa} />
+            <Input label="Localité" value={form.localite} onChange={set("localite")} />
           </div>
         </div>
         <div className="mt-4">
-          <TextArea label="Notes" value={form.notes} onChange={set("notes")} />
+          <TextArea label="Notes" value={form.notes} onChange={set("notes")} error={errors.notes} maxLength={5000} />
+          {form.notes && <p className="text-xs text-gray-400 mt-1 text-right">{form.notes.length}/5000</p>}
         </div>
         <div className="flex justify-end gap-3 mt-6">
           <button onClick={() => setModalOpen(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
             Annuler
           </button>
           <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50">
-            {saving ? "..." : editing ? "Enregistrer" : "Creer"}
+            {saving ? "Enregistrement..." : editing ? "Enregistrer" : "Créer"}
           </button>
         </div>
       </Modal>
 
-      {/* Delete confirmation */}
       <ConfirmDialog
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         loading={deleting}
         title="Supprimer le client"
-        message={deleteTarget ? `Supprimer ${deleteTarget.prenom} ${deleteTarget.nom} ? Les vehicules associes ne seront plus visibles.` : ""}
+        message={deleteTarget ? `Supprimer ${deleteTarget.prenom} ${deleteTarget.nom} ? Les véhicules associés ne seront plus visibles.` : ""}
       />
     </div>
   );

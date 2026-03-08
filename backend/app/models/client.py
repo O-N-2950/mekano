@@ -4,17 +4,21 @@ from datetime import datetime, timezone
 
 class Client(db.Model):
     __tablename__ = "clients"
+    __table_args__ = (
+        db.Index("ix_clients_garage_nom", "garage_id", "nom"),
+        db.Index("ix_clients_garage_actif", "garage_id", "actif"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     garage_id = db.Column(db.Integer, db.ForeignKey("garages.id"), nullable=False)
     prenom = db.Column(db.String(100), nullable=False)
-    nom = db.Column(db.String(100), nullable=False)
+    nom = db.Column(db.String(100), nullable=False, index=True)
     entreprise = db.Column(db.String(200))
     adresse = db.Column(db.String(500))
     npa = db.Column(db.String(10))
     localite = db.Column(db.String(200))
-    telephone = db.Column(db.String(20))
-    email = db.Column(db.String(200))
+    telephone = db.Column(db.String(30))
+    email = db.Column(db.String(254))
     date_naissance = db.Column(db.Date)
     notes = db.Column(db.Text)
     actif = db.Column(db.Boolean, default=True)
