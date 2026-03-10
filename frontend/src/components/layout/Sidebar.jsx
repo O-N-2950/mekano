@@ -24,7 +24,7 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 h-screen w-60 bg-sidebar flex flex-col text-white">
       <div className="px-5 py-6 border-b border-white/10">
         <h1 className="text-lg font-semibold tracking-tight">
-          Garage<span className="text-accent">NEO</span>
+          Me<span className="text-accent">kano</span>
         </h1>
         {garage && (
           <p className="text-xs text-gray-400 mt-1 truncate">{garage.nom}</p>
