@@ -6,14 +6,16 @@ import {
   Users,
   Car,
   Wrench,
+  FileText,
   LogOut,
 } from "lucide-react";
 
 const links = [
   { to: "/", icon: LayoutDashboard, label: "Tableau de bord" },
   { to: "/clients", icon: Users, label: "Clients" },
-  { to: "/vehicules", icon: Car, label: "Vehicules" },
+  { to: "/vehicules", icon: Car, label: "Véhicules" },
   { to: "/ordres", icon: Wrench, label: "Ordres de travail" },
+  { to: "/devis", icon: FileText, label: "Devis" },
 ];
 
 export default function Sidebar() {
